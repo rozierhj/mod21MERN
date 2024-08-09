@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Container,
   Col,
@@ -9,8 +9,14 @@ import {
 } from 'react-bootstrap';
 
 import Auth from '../utils/auth';
-import { saveBook, searchGoogleBooks } from '../utils/API';
-import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
+
+import {useMutation, useLazyQuery} from '@apollo/client';
+import {GET_ME} from '../utils/queries';
+import { SAVE_BOOK } from '../utils/mutations';
+
+
+// import { saveBook, searchGoogleBooks } from '../utils/API';
+// import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
 
 const SearchBooks = () => {
   // create state for holding returned google api data
@@ -19,13 +25,33 @@ const SearchBooks = () => {
   const [searchInput, setSearchInput] = useState('');
 
   // create state to hold saved bookId values
-  const [savedBookIds, setSavedBookIds] = useState(getSavedBookIds());
+
+  // const [savedBookIds, setSavedBookIds] = useState(getSavedBookIds());
+
+ const [getMe, {data: meData}] = useLazyQuery(GET_ME);
+
+  const [saveBook] = useMutation(SAVE_BOOK,{
+    update(cache, {data: {saveBook}}) {
+      try{
+          const {me} = cache.readQuery({query: GET_ME});
+
+          cache.writeQuery({
+            query:GET_ME,
+            data: {me: {...me, savedBooks:[...me.savedBooks, saveBook]}},
+          });
+      }
+      catch(err){
+        console.log('error in updating the cache after saving the book', err)
+      }
+    }
+  });
 
   // set up useEffect hook to save `savedBookIds` list to localStorage on component unmount
   // learn more here: https://reactjs.org/docs/hooks-effect.html#effects-with-cleanup
-  useEffect(() => {
-    return () => saveBookIds(savedBookIds);
-  });
+
+  // useEffect(() => {
+  //   return () => saveBookIds(savedBookIds);
+  // });
 
   // create method to search for books and set state on form submit
   const handleFormSubmit = async (event) => {
@@ -36,7 +62,8 @@ const SearchBooks = () => {
     }
 
     try {
-      const response = await searchGoogleBooks(searchInput);
+      //const response = await searchGoogleBooks(searchInput);
+      const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${searchInput}`);
 
       if (!response.ok) {
         throw new Error('something went wrong!');
@@ -54,6 +81,11 @@ const SearchBooks = () => {
 
       setSearchedBooks(bookData);
       setSearchInput('');
+
+      if (Auth.loggedIn()) {
+        getMe();
+      }
+
     } catch (err) {
       console.error(err);
     }
@@ -64,27 +96,30 @@ const SearchBooks = () => {
     // find the book in `searchedBooks` state by the matching id
     const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
 
-    // get token
-    const token = Auth.loggedIn() ? Auth.getToken() : null;
-
-    if (!token) {
+    if (!Auth.loggedIn()) {
       return false;
     }
+    // get token
+    // const token = Auth.loggedIn() ? Auth.getToken() : null;
+
+    // if (!token) {
+    //   return false;
+    // }
 
     try {
-      const response = await saveBook(bookToSave, token);
+      await saveBook({
+        variables: { ...bookToSave },
+      });
 
-      if (!response.ok) {
-        throw new Error('something went wrong!');
-      }
-
-      // if book successfully saves to user's account, save book id to state
-      setSavedBookIds([...savedBookIds, bookToSave.bookId]);
+      // Fetch updated user data after saving the book
+      getMe();
     } catch (err) {
-      console.error(err);
+      console.error('Error saving the book!', err);
     }
   };
 
+  const savedBookIds = meData?.me?.savedBooks?.map(book => book.bookId) || [];
+  
   return (
     <>
       <div className="text-light bg-dark p-5">

@@ -46,11 +46,11 @@ const resolvers = {
       return { token, user };
     },
     // Save a book to the user's savedBooks array
-    saveBook: async (parent, { authors, description, bookId, image, link, title }, context) => {
+    saveBook: async (parent, { authors, description, title, bookId, image, link }, context) => {
       if (context.user) {
         const updatedUser = await User.findByIdAndUpdate(
           { _id: context.user._id },
-          { $addToSet: { savedBooks: { authors, description, bookId, image, link, title } } },
+          { $addToSet: { savedBooks: { authors, description, title, bookId, image, link } } },
           { new: true }
         ).populate('savedBooks');
 

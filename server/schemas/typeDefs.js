@@ -2,12 +2,13 @@ const typeDefs = `
   # Define the Book type based on the bookSchema
   type Book {
     _id: ID
+    bookId: String
     authors: [String]
     description: String
-    bookId: String
+    title: String
     image: String
     link: String
-    title: String
+    
   }
 
   # Define the User type
@@ -16,6 +17,7 @@ const typeDefs = `
     username: String!
     email: String!
     password: String!
+    bookCount: Int
     savedBooks: [Book]
   }
 
@@ -28,9 +30,9 @@ const typeDefs = `
 
   # Define the Mutation type for creating and updating users
   type Mutation {
-    addUser(username: String!, email: String!, password: String!): Auth
     login(email: String!, password: String!): Auth
-    saveBook(authors: [String], description: String, bookId: String, image: String, link: String, title: String): User
+    addUser(username: String!, email: String!, password: String!): Auth
+    saveBook(authors: [String], description: String, title: String, bookId: String, image: String, link: String): User
     removeBook(bookId: String!): User
   }
 
