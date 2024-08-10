@@ -25,7 +25,7 @@ const startApolloServer = async () => {
     context: authMiddleware
   }));
 //process.env.NODE_ENV === 'production'
-  if (true) {
+  if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, '../client/dist')));
 
     app.get('*', (req, res) => {

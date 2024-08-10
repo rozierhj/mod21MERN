@@ -23,8 +23,6 @@ const typeDefs = `
 
   # Define the Query type
   type Query {
-    users: [User]
-    user(id: ID!): User
     me: User
   }
 

@@ -5,9 +5,8 @@ import {
   Form,
   Button,
   Card,
-  Row
+  Row,
 } from 'react-bootstrap';
-
 import Auth from '../utils/auth';
 
 import {useMutation, useLazyQuery} from '@apollo/client';
@@ -15,22 +14,20 @@ import {GET_ME} from '../utils/queries';
 import { SAVE_BOOK } from '../utils/mutations';
 
 
-// import { saveBook, searchGoogleBooks } from '../utils/API';
-// import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
-
 const SearchBooks = () => {
   // create state for holding returned google api data
   const [searchedBooks, setSearchedBooks] = useState([]);
   // create state for holding our search field data
   const [searchInput, setSearchInput] = useState('');
 
-  // create state to hold saved bookId values
 
-  // const [savedBookIds, setSavedBookIds] = useState(getSavedBookIds());
-
+  //fetch the logged-in user's data (GET_ME query) when needed.
  const [getMe, {data: meData}] = useLazyQuery(GET_ME);
 
+ //save a book to the user's savedBooks list using the SAVE_BOOK mutation.
   const [saveBook] = useMutation(SAVE_BOOK,{
+
+    //update the Apollo Client cache with the users new saved book
     update(cache, {data: {saveBook}}) {
       try{
           const {me} = cache.readQuery({query: GET_ME});
@@ -46,14 +43,7 @@ const SearchBooks = () => {
     }
   });
 
-  // set up useEffect hook to save `savedBookIds` list to localStorage on component unmount
-  // learn more here: https://reactjs.org/docs/hooks-effect.html#effects-with-cleanup
-
-  // useEffect(() => {
-  //   return () => saveBookIds(savedBookIds);
-  // });
-
-  // create method to search for books and set state on form submit
+  // search for books and set state on form submit
   const handleFormSubmit = async (event) => {
     event.preventDefault();
 
@@ -62,7 +52,7 @@ const SearchBooks = () => {
     }
 
     try {
-      //const response = await searchGoogleBooks(searchInput);
+      //the google book api that is getting value from book search field
       const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${searchInput}`);
 
       if (!response.ok) {
@@ -70,18 +60,23 @@ const SearchBooks = () => {
       }
 
       const { items } = await response.json();
-
+    
+      //get the data from the books returned in the google book api
       const bookData = items.map((book) => ({
         bookId: book.id,
         authors: book.volumeInfo.authors || ['No author to display'],
         title: book.volumeInfo.title,
         description: book.volumeInfo.description,
         image: book.volumeInfo.imageLinks?.thumbnail || '',
+        link: book.accessInfo.webReaderLink,
       }));
 
+      //update searchbook state
       setSearchedBooks(bookData);
+      //reset searchinput state
       setSearchInput('');
 
+      //get user data who is logged in
       if (Auth.loggedIn()) {
         getMe();
       }
@@ -91,21 +86,18 @@ const SearchBooks = () => {
     }
   };
 
-  // create function to handle saving a book to our database
+  // saving a book to our database
   const handleSaveBook = async (bookId) => {
+
     // find the book in `searchedBooks` state by the matching id
     const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
 
+    //if use not authentice then leave
     if (!Auth.loggedIn()) {
       return false;
     }
-    // get token
-    // const token = Auth.loggedIn() ? Auth.getToken() : null;
 
-    // if (!token) {
-    //   return false;
-    // }
-
+    //adding the book to the existing database for that user
     try {
       await saveBook({
         variables: { ...bookToSave },
@@ -118,8 +110,9 @@ const SearchBooks = () => {
     }
   };
 
+  //loop through all saved books and grab bookid or return empty array
   const savedBookIds = meData?.me?.savedBooks?.map(book => book.bookId) || [];
-  
+
   return (
     <>
       <div className="text-light bg-dark p-5">
@@ -165,6 +158,7 @@ const SearchBooks = () => {
                     <Card.Title>{book.title}</Card.Title>
                     <p className='small'>Authors: {book.authors}</p>
                     <Card.Text>{book.description}</Card.Text>
+                    <Card.Link href={book.link} target='_blank' rel='noopener noreferrer' style={{ display: 'block', marginBottom: '10px' }}>Read Book</Card.Link>
                     {Auth.loggedIn() && (
                       <Button
                         disabled={savedBookIds?.some((savedBookId) => savedBookId === book.bookId)}

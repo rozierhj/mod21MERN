@@ -9,21 +9,29 @@ import {
 import { useQuery, useMutation } from '@apollo/client';
 import { GET_ME } from '../utils/queries';
 import { REMOVE_BOOK } from '../utils/mutations';
-// import { getMe, deleteBook } from '../utils/API';
 import Auth from '../utils/auth';
-// import { removeBookId } from '../utils/localStorage';
+
 
 const SavedBooks = () => {
-  // const [userData, setUserData] = useState({});
 
+  //getting use data query
   const {loading, data } = useQuery(GET_ME);
+
+  //removing user book mutation
   const [removeBook] = useMutation(REMOVE_BOOK, {
+
+    //update appolo clients cache
     update(cache, {data: {removeBook}}){
       try{
+
+        //get users data from cache
         const {me} = cache.readQuery({query:GET_ME});
         cache.writeQuery({
           query: GET_ME,
-          data: {me:{...me, savedBooks: me.savedBooks.filter(book => book.bookId !== removeBook.bookId)}},
+          //filter out the book that was just removed
+          data: {me:{...me, savedBooks: me.savedBooks.filter(book => book.bookId !== removeBook.bookId),
+            bookCount: me.bookCount - 1,
+          }},
         });
       }
       catch(err){
@@ -32,60 +40,16 @@ const SavedBooks = () => {
     },
   });
 
- // const userData = data?.me || {};
-  // use this to determine if `useEffect()` hook needs to run again
-
-
-  // const userDataLength = Object.keys(userData).length;
-
-  // useEffect(() => {
-  //   const getUserData = async () => {
-  //     try {
-  //       const token = Auth.loggedIn() ? Auth.getToken() : null;
-
-  //       if (!token) {
-  //         return false;
-  //       }
-
-  //       const response = await getMe(token);
-
-  //       if (!response.ok) {
-  //         throw new Error('something went wrong!');
-  //       }
-
-  //       const user = await response.json();
-  //       setUserData(user);
-  //     } catch (err) {
-  //       console.error(err);
-  //     }
-  //   };
-
-  //   getUserData();
-  // }, [userDataLength]);
-
-
-  // create function that accepts the book's mongo _id value as param and deletes the book from the database
+  //deletes the book from the database
   const handleDeleteBook = async (bookId) => {
-    // const token = Auth.loggedIn() ? Auth.getToken() : null;
 
-    // if (!token) {
-    //   return false;
-    // }
+    //leave if user no authenticated
     if(!Auth.loggedIn()){
       return false;
     }
 
     try {
-      //const response = await deleteBook(bookId, token);
 
-      // if (!response.ok) {
-      //   throw new Error('something went wrong!');
-      // }
-
-      // const updatedUser = await response.json();
-      // setUserData(updatedUser);
-      // // upon success, remove book's id from localStorage
-      // removeBookId(bookId);
       await removeBook({
         variables:{bookId},
       });
@@ -95,15 +59,13 @@ const SavedBooks = () => {
     }
   };
 
+  //getting users data
   const userData = data?.me || {};
-  // if data isn't here yet, say so
+  
+  // if data isn't here yet, say LOADING will test using email which is expected value
   if (userData.email === undefined || userData.email === null || userData.email ==='') {
     return <h2>LOADING...</h2>;
   }
-
-// return (
-// <div>hello</div>
-// );
 
   return (
     <div>
@@ -115,8 +77,8 @@ const SavedBooks = () => {
       </div>
       <Container>
         <h2 className='pt-5'>
-          {userData.savedBooks.length
-            ? `Viewing ${userData.savedBooks.length} saved ${userData.savedBooks.length === 1 ? 'book' : 'books'}:`
+          {userData.bookCount
+            ? `Viewing ${userData.bookCount} saved ${userData.bookCount === 1 ? 'book' : 'books'}:`
             : 'You have no saved books!'}
         </h2>
         <Row>
@@ -129,6 +91,7 @@ const SavedBooks = () => {
                     <Card.Title>{book.title}</Card.Title>
                     <p className='small'>Authors: {book.authors}</p>
                     <Card.Text>{book.description}</Card.Text>
+                    <Card.Link href={book.link} target='_blank' rel='noopener noreferrer' style={{ display: 'block', marginBottom: '10px' }}>Read Book</Card.Link>
                     <Button className='btn-block btn-danger' onClick={() => handleDeleteBook(book.bookId)}>
                       Delete this Book!
                     </Button>
@@ -140,15 +103,9 @@ const SavedBooks = () => {
         </Row>
       </Container>
 
-
-
-
-
     </div>
   );
 
-
-  
 };
 
 export default SavedBooks;
